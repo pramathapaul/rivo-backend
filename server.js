@@ -5,10 +5,10 @@ import morgan from 'morgan'
 import helmet from 'helmet'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import mongoose from 'mongoose'
 import connectDB from './config/db.js'
 import { notFound, errorHandler } from './middleware/errorMiddleware.js'
 import colors from 'colors'
-import mongoose from 'mongoose'
 
 // Route imports
 import authRoutes from './routes/authRoutes.js'
@@ -27,13 +27,38 @@ const app = express()
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// Middleware
+// ✅ CORS Configuration - ALLOW YOUR NETLIFY DOMAIN
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'https://rivo-staybold.netlify.app',  // ✅ YOUR NETLIFY URL
+  'https://rivo.netlify.app',
+  'https://rivo-frontend.netlify.app'
+]
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, Postman)
+    if (!origin) return callback(null, true)
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true)
+    } else {
+      console.log('❌ Blocked by CORS:', origin)
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}))
+
+// Handle preflight requests
+app.options('*', cors())
+
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173'],
-  credentials: true
-}))
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }))
@@ -62,7 +87,7 @@ app.get('/', (req, res) => {
   })
 })
 
-// Error handling middleware
+// Error handling
 app.use(notFound)
 app.use(errorHandler)
 
@@ -72,10 +97,10 @@ const server = app.listen(PORT, () => {
   console.log(`\n${'='.repeat(50)}`.cyan)
   console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`.cyan.bold)
   console.log(`📡 API available at http://localhost:${PORT}`.yellow)
+  console.log(`✅ CORS allowed origins: ${allowedOrigins.join(', ')}`.green)
   console.log(`${'='.repeat(50)}\n`.cyan)
 })
 
-// Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
   console.error(`❌ Unhandled Rejection: ${err.message}`.red.bold)
   server.close(() => process.exit(1))
