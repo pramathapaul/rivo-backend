@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -24,6 +25,13 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin', 'designer'],
     default: 'user'
   },
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  verificationToken: String,
+  verificationTokenExpire: Date,
+  verifiedAt: Date,
   avatar: {
     type: String,
     default: ''
@@ -50,7 +58,6 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 })
 
-// Encrypt password before saving
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) {
     next()
@@ -59,9 +66,15 @@ userSchema.pre('save', async function(next) {
   this.password = await bcrypt.hash(this.password, salt)
 })
 
-// Match password method
 userSchema.methods.matchPassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password)
+}
+
+userSchema.methods.generateVerificationToken = function() {
+  const token = crypto.randomBytes(32).toString('hex')
+  this.verificationToken = crypto.createHash('sha256').update(token).digest('hex')
+  this.verificationTokenExpire = Date.now() + 24 * 60 * 60 * 1000
+  return token
 }
 
 const User = mongoose.model('User', userSchema)
