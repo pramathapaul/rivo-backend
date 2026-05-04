@@ -223,4 +223,3 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     throw new Error('Order not found')
   }
 })
-
